@@ -80,6 +80,10 @@
     }
     const today = new Date().toISOString().split("T")[0];
     document.getElementById("f-date").value = today;
+    
+    // Add stats account filter listener
+    document.getElementById("stats-account-filter").addEventListener("change", refreshStats);
+    
     loadStats();
     loadTrades();
   }
@@ -159,19 +163,18 @@
       trades = trades.filter(t => (t.account || "Live Account") === accountFilter);
     }
     
-    // Win rate: only wins vs (wins + losses) — BE excluded
+    // Win rate: wins vs all trades (BE counts as non-win)
     const wins = trades.filter(t => t.result === "win").length;
     const losses = trades.filter(t => t.result === "loss").length;
     const beCount = trades.filter(t => t.result === "be").length;
-    const decidedTrades = wins + losses; // BE excluded from win rate
-    const wr = decidedTrades > 0 ? Math.round(wins / decidedTrades * 100) : 0;
+    const wr = trades.length > 0 ? Math.round(wins / trades.length * 100) : 0;
     const pnl = trades.reduce((s, t) => s + (t.pnl || 0), 0);
     const best = trades.length ? Math.max(...trades.map(t => t.pnl || 0)) : 0;
     
-    document.getElementById("stat-total").textContent = trades.length + (beCount > 0 ? ` (${beCount} BE)` : "");
+    document.getElementById("stat-total").textContent = trades.length;
     document.getElementById("stat-wr").textContent = wr + "%";
     document.getElementById("stat-wins").textContent = wins;
-    document.getElementById("stat-losses").textContent = losses;
+    document.getElementById("stat-losses").textContent = losses + " / " + beCount + " BE";
     const pnlEl = document.getElementById("stat-pnl");
     pnlEl.textContent = (pnl >= 0 ? "+" : "") + "$" + pnl.toFixed(0);
     pnlEl.className = "stat-val " + (pnl >= 0 ? "green" : "red");
@@ -317,7 +320,13 @@
   };
   window.filterTrades = function(f, el) { window.setResultFilter(f, el); };
 
+  function setupTradeFilters() {
+    const af = document.getElementById("account-filter");
+    if (af) af.addEventListener("change", applyFilters);
+  }
+
   async function loadTrades() {
+    setupTradeFilters();
     const q = query(collection(db, "trades"), where("userId", "==", currentUser.uid));
     const snap = await getDocs(q);
     allTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -673,7 +682,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
       <!-- Account selector for stats -->
       <div style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;color:var(--muted);font-weight:600">STATS FOR:</span>
-        <select id="stats-account-filter" onchange="refreshStats()" style="background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;color:var(--gold);font-family:var(--font);font-size:13px;padding:8px 14px;outline:none;font-weight:600">
+        <select id="stats-account-filter" style="background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;color:var(--gold);font-family:var(--font);font-size:13px;padding:8px 14px;outline:none;font-weight:600">
           <option value="all">All Accounts Combined</option>
         </select>
       </div>
@@ -723,7 +732,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
       <div class="trades-header">
         <div class="trades-title">Trade History</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select id="account-filter" onchange="applyFilters()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:13px;padding:6px 12px;outline:none" id="account-filter">
+          <select id="account-filter" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:13px;padding:6px 12px;outline:none">
             <option value="all">All Accounts</option>
           </select>
           <div class="filter-row">
