@@ -132,16 +132,46 @@
   };
 
   // ===== STATS =====
+  let allUserTrades = [];
+
   async function loadStats() {
     const q = query(collection(db, "trades"), where("userId", "==", currentUser.uid));
     const snap = await getDocs(q);
-    const trades = snap.docs.map(d => d.data());
+    allUserTrades = snap.docs.map(d => d.data());
+    
+    // Populate account selector
+    const accounts = [...new Set(allUserTrades.map(t => t.account || "Live Account"))].filter(Boolean);
+    const sel = document.getElementById("stats-account-filter");
+    sel.innerHTML = '<option value="all">All Accounts Combined</option>';
+    accounts.forEach(a => {
+      const opt = document.createElement("option");
+      opt.value = a; opt.textContent = a;
+      sel.appendChild(opt);
+    });
+    
+    refreshStats();
+  }
+
+  window.refreshStats = function() {
+    const accountFilter = document.getElementById("stats-account-filter")?.value || "all";
+    let trades = allUserTrades;
+    if (accountFilter !== "all") {
+      trades = trades.filter(t => (t.account || "Live Account") === accountFilter);
+    }
+    
+    // Win rate: only wins vs (wins + losses) — BE excluded
     const wins = trades.filter(t => t.result === "win").length;
-    const wr = trades.length ? Math.round(wins / trades.length * 100) : 0;
+    const losses = trades.filter(t => t.result === "loss").length;
+    const beCount = trades.filter(t => t.result === "be").length;
+    const decidedTrades = wins + losses; // BE excluded from win rate
+    const wr = decidedTrades > 0 ? Math.round(wins / decidedTrades * 100) : 0;
     const pnl = trades.reduce((s, t) => s + (t.pnl || 0), 0);
     const best = trades.length ? Math.max(...trades.map(t => t.pnl || 0)) : 0;
-    document.getElementById("stat-total").textContent = trades.length;
+    
+    document.getElementById("stat-total").textContent = trades.length + (beCount > 0 ? ` (${beCount} BE)` : "");
     document.getElementById("stat-wr").textContent = wr + "%";
+    document.getElementById("stat-wins").textContent = wins;
+    document.getElementById("stat-losses").textContent = losses;
     const pnlEl = document.getElementById("stat-pnl");
     pnlEl.textContent = (pnl >= 0 ? "+" : "") + "$" + pnl.toFixed(0);
     pnlEl.className = "stat-val " + (pnl >= 0 ? "green" : "red");
@@ -640,9 +670,18 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
   <div class="content">
     <!-- JOURNAL -->
     <div class="section active" id="sec-journal">
+      <!-- Account selector for stats -->
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;color:var(--muted);font-weight:600">STATS FOR:</span>
+        <select id="stats-account-filter" onchange="refreshStats()" style="background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;color:var(--gold);font-family:var(--font);font-size:13px;padding:8px 14px;outline:none;font-weight:600">
+          <option value="all">All Accounts Combined</option>
+        </select>
+      </div>
       <div class="stats-row">
         <div class="stat-card"><div class="stat-label">Total Trades</div><div class="stat-val gold" id="stat-total">0</div></div>
         <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-val green" id="stat-wr">0%</div></div>
+        <div class="stat-card"><div class="stat-label">Wins</div><div class="stat-val green" id="stat-wins">0</div></div>
+        <div class="stat-card"><div class="stat-label">Losses</div><div class="stat-val red" id="stat-losses">0</div></div>
         <div class="stat-card"><div class="stat-label">Total P&L</div><div class="stat-val" id="stat-pnl">$0</div></div>
         <div class="stat-card"><div class="stat-label">Best Trade</div><div class="stat-val green" id="stat-best">$0</div></div>
       </div>
