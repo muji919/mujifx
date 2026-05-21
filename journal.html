@@ -11,7 +11,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  // Storage not needed - using base64
 
   const firebaseConfig = {
     apiKey: "AIzaSyAPHynp59dujIRTm7rZ7jfqjFRzkitxna4",
@@ -26,7 +26,7 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  const storage = getStorage(app);
+  // const storage = getStorage(app);
 
   // ADMIN EMAIL
   const ADMIN_EMAIL = "mujifxsensei@gmail.com";
@@ -217,15 +217,18 @@
     btn.disabled = true;
     btn.innerHTML = "<span class=\"loading\"></span>AI analyzing...";
 
-    // Upload screenshot if any
+    // Store screenshot as base64 locally
     let ssUrl = "";
     const ssFile = document.getElementById("f-screenshot").files[0];
     if (ssFile) {
       try {
-        const ssRef = ref(storage, `screenshots/${currentUser.uid}/${Date.now()}_${ssFile.name}`);
-        await uploadBytes(ssRef, ssFile);
-        ssUrl = await getDownloadURL(ssRef);
-      } catch(e) { console.log("Screenshot upload failed", e); }
+        ssUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = () => resolve("");
+          reader.readAsDataURL(ssFile);
+        });
+      } catch(e) { ssUrl = ""; }
     }
 
     const tradeData = {
