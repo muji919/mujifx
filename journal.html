@@ -214,11 +214,16 @@
               <div style="color:var(--muted);margin-bottom:4px">🧠 Most Common Emotion</div>
               <div style="font-weight:600;color:var(--text)">${topEmotion}</div>
             </div>
-            ${mistakes.length > 0 ? `
+            ${mistakes.length > 0 ? (() => {
+              const lastMistake = mistakes.slice(-1)[0]?.mistakes || "";
+              const noMistakeKeywords = ["no ", "none", "koi nahi", "koi be nahi", "nothing", "no rule", "n/a", "nil", "nahi"];
+              const isActualMistake = !noMistakeKeywords.some(k => lastMistake.toLowerCase().includes(k));
+              return isActualMistake ? `
             <div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:10px;padding:12px;grid-column:1/-1">
-              <div style="color:var(--red);margin-bottom:4px;font-weight:600">⚠️ Repeated Mistakes (${mistakes.length} trades had mistakes)</div>
-              <div style="color:var(--muted);font-size:12px">${mistakes.slice(-1)[0]?.mistakes?.substring(0,100) || ""}</div>
-            </div>` : ""}
+              <div style="color:var(--red);margin-bottom:4px;font-weight:600">⚠️ Mistakes Noted (${mistakes.length} trades)</div>
+              <div style="color:var(--muted);font-size:12px">${lastMistake.substring(0,100)}</div>
+            </div>` : "";
+            })() : ""}
           </div>
         </div>`;
     });
@@ -335,7 +340,9 @@
     sections.push(p);
 
     // 4. MISTAKES
-    if (mistakes && mistakes.trim().length > 2) {
+    const noMistakeKeywords2 = ["no ", "none", "koi nahi", "nothing", "no rule", "n/a", "nil", "nahi"];
+    const isRealMistake2 = mistakes && mistakes.trim().length > 2 && !noMistakeKeywords2.some(function(k) { return mistakes.toLowerCase().includes(k); });
+    if (isRealMistake2) {
       let m = "MISTAKE ANALYSIS\n";
       m += 'You noted: "' + mistakes.substring(0, 100) + (mistakes.length > 100 ? "..." : "") + '"\n';
       const ml = mistakes.toLowerCase();
@@ -391,10 +398,16 @@
         warn += "REVENGE TRADING PATTERN\nRevenge trading pattern detected. Avoid trading immediately after a loss - this rule starts today.";
       }
       if (mistakes && mistakes.trim().length > 2) {
-        const keyword = mistakes.toLowerCase().substring(0, 8);
-        const sameCount = allTrades.filter(function(t) { return t.mistakes && t.mistakes.toLowerCase().includes(keyword); }).length;
-        if (sameCount >= 2) {
-          warn += (warn ? "\n\n" : "") + "REPEATED MISTAKE\nYou have made this mistake " + sameCount + " times. Write it at the top of your trading rules and read it before every single trade.";
+        const noMistakeWords = ["no ", "none", "koi nahi", "nothing", "no rule", "n/a", "nil", "nahi"];
+        const isRealMistake = !noMistakeWords.some(function(k) { return mistakes.toLowerCase().includes(k); });
+        if (isRealMistake) {
+          const keyword = mistakes.toLowerCase().substring(0, 8);
+          const sameCount = allTrades.filter(function(t) { 
+            return t.mistakes && t.mistakes.toLowerCase().includes(keyword); 
+          }).length;
+          if (sameCount >= 2) {
+            warn += (warn ? "\n\n" : "") + "REPEATED MISTAKE\nYou have made this mistake " + sameCount + " times. Write it at the top of your trading rules and read it before every single trade.";
+          }
         }
       }
       if (warn) sections.push(warn);
@@ -498,8 +511,10 @@
         })
       });
       const geminiData = await geminiRes.json();
+      console.log("Gemini response:", JSON.stringify(geminiData).substring(0, 200));
       tradeData.ai = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || generateAIAnalysis(tradeData, allUserTrades);
     } catch(e) {
+      console.log("Gemini error:", e);
       tradeData.ai = generateAIAnalysis(tradeData, allUserTrades);
     }
 
