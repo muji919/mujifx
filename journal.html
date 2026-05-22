@@ -133,7 +133,98 @@
     document.getElementById("tab-" + tab).classList.add("active");
     if (tab === "trades") loadTrades();
     if (tab === "admin") loadAdminPanel();
+    if (tab === "summary") renderAccountSummary();
   };
+  
+  function renderAccountSummary() {
+    const el = document.getElementById("summary-content");
+    if (!allUserTrades.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📈</div>No trades yet. Start journaling to see your account summary.</div>`;
+      return;
+    }
+    
+    // Group by account
+    const accounts = {};
+    allUserTrades.forEach(t => {
+      const acc = t.account || "Live Account";
+      if (!accounts[acc]) accounts[acc] = [];
+      accounts[acc].push(t);
+    });
+    
+    let html = `<div style="margin-bottom:1rem;font-size:15px;font-weight:700;color:var(--text)">Account Performance Summary</div>`;
+    
+    Object.entries(accounts).forEach(([accName, trades]) => {
+      const wins = trades.filter(t => t.result === "win").length;
+      const losses = trades.filter(t => t.result === "loss").length;
+      const be = trades.filter(t => t.result === "be").length;
+      const wr = trades.length > 0 ? Math.round(wins / trades.length * 100) : 0;
+      const totalPnl = trades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0);
+      const bestTrade = Math.max(...trades.map(t => parseFloat(t.pnl) || 0));
+      const worstTrade = Math.min(...trades.map(t => parseFloat(t.pnl) || 0));
+      
+      // Most common emotion
+      const emotions = {};
+      trades.forEach(t => { if(t.emotion) emotions[t.emotion] = (emotions[t.emotion]||0)+1; });
+      const topEmotion = Object.entries(emotions).sort((a,b) => b[1]-a[1])[0]?.[0] || "N/A";
+      
+      // Most traded pair
+      const pairs = {};
+      trades.forEach(t => { if(t.pair) pairs[t.pair] = (pairs[t.pair]||0)+1; });
+      const topPair = Object.entries(pairs).sort((a,b) => b[1]-a[1])[0]?.[0] || "N/A";
+      
+      // Most common mistake
+      const mistakes = trades.filter(t => t.mistakes && t.mistakes.trim().length > 2);
+      
+      html += `
+        <div style="background:var(--bg2);border:1px solid var(--border-gold);border-radius:16px;padding:1.5rem;margin-bottom:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+            <div style="font-family:var(--font);font-size:17px;font-weight:700;color:var(--gold)">💼 ${accName}</div>
+            <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(0)}</div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1rem">
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Trades</div>
+              <div style="font-size:22px;font-weight:700;color:var(--gold);font-family:var(--mono)">${trades.length}</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Win Rate</div>
+              <div style="font-size:22px;font-weight:700;color:${wr>=50?'var(--green)':'var(--red)'};font-family:var(--mono)">${wr}%</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">W/L/BE</div>
+              <div style="font-size:16px;font-weight:700;font-family:var(--mono)"><span style="color:var(--green)">${wins}</span>/<span style="color:var(--red)">${losses}</span>/<span style="color:var(--gold)">${be}</span></div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Best</div>
+              <div style="font-size:18px;font-weight:700;color:var(--green);font-family:var(--mono)">+$${bestTrade}</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Worst</div>
+              <div style="font-size:18px;font-weight:700;color:var(--red);font-family:var(--mono)">$${worstTrade}</div>
+            </div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+            <div style="background:var(--bg3);border-radius:10px;padding:12px">
+              <div style="color:var(--muted);margin-bottom:4px">🎯 Most Traded Pair</div>
+              <div style="font-weight:600;color:var(--text);font-family:var(--mono)">${topPair}</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:10px;padding:12px">
+              <div style="color:var(--muted);margin-bottom:4px">🧠 Most Common Emotion</div>
+              <div style="font-weight:600;color:var(--text)">${topEmotion}</div>
+            </div>
+            ${mistakes.length > 0 ? `
+            <div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:10px;padding:12px;grid-column:1/-1">
+              <div style="color:var(--red);margin-bottom:4px;font-weight:600">⚠️ Repeated Mistakes (${mistakes.length} trades had mistakes)</div>
+              <div style="color:var(--muted);font-size:12px">${mistakes.slice(-1)[0]?.mistakes?.substring(0,100) || ""}</div>
+            </div>` : ""}
+          </div>
+        </div>`;
+    });
+    
+    el.innerHTML = html;
+  }
 
   // ===== STATS =====
   let allUserTrades = [];
@@ -181,63 +272,167 @@
     document.getElementById("stat-best").textContent = "+$" + best;
   }
 
-  // Smart AI Analysis Engine
-  function generateAIAnalysis(t) {
-    const pair = t.pair;
-    const dir = t.dir.toUpperCase();
-    const pnl = t.pnl;
-    const result = t.result;
-    const emotion = t.emotion;
-    const mistakes = t.mistakes;
-    const notes = t.notes;
-    const session = t.session;
+  // ===== ADVANCED AI ANALYSIS ENGINE =====
+  function generateAIAnalysis(t, allTrades) {
+    const pair = t.pair || "";
+    const dir = (t.dir || "").toUpperCase();
+    const pnl = parseFloat(t.pnl) || 0;
+    const result = t.result || "loss";
+    const emotion = t.emotion || "";
+    const mistakes = t.mistakes || "";
+    const notes = t.notes || "";
+    const session = t.session || "";
+    const entry = parseFloat(t.entry) || 0;
+    const exit = parseFloat(t.exit) || 0;
+    const lot = parseFloat(t.lot) || 0;
 
-    let analysis = "";
+    let sections = [];
 
-    // Result based opening
+    // ── 1. RESULT ANALYSIS ──
+    let resultSection = "📊 *نتیجہ (Result):* ";
     if (result === "win") {
-      if (pnl > 100) analysis += `Excellent trade on ${pair}! A $${pnl} profit shows strong execution. `;
-      else analysis += `Good win on ${pair} with $${pnl} profit. `;
+      if (pnl >= 100) resultSection += `${pair} پر $${pnl} کا زبردست منافع — بہترین execution۔ اس trade کو اپنا reference بنائیں۔`;
+      else resultSection += `${pair} پر $${pnl} منافع — اچھی trade۔ Process follow کرتے رہیں۔`;
     } else if (result === "loss") {
-      analysis += `This ${pair} trade resulted in a $${Math.abs(pnl)} loss. `;
+      resultSection += `${pair} پر $${Math.abs(pnl)} کا نقصان — یاد رہے، یہ trading کا حصہ ہے۔ لیکن اسے سمجھنا ضروری ہے۔`;
     } else {
-      analysis += `Break even on ${pair} — capital protected. `;
+      resultSection += `${pair} پر Break Even — BE کو loss سمجھیں کیونکہ آپ نے وقت اور موقع لگایا۔ اگلی بار بہتر exit کریں۔`;
+    }
+    sections.push(resultSection);
+
+    // ── 2. ENTRY/EXIT ANALYSIS ──
+    if (entry > 0 && exit > 0) {
+      let entrySection = "🎯 *Entry/Exit تجزیہ:* ";
+      const move = Math.abs(exit - entry);
+      const movePercent = ((move / entry) * 100).toFixed(3);
+      
+      if (dir === "BUY" && exit > entry) {
+        entrySection += `Entry ${entry} سے Exit ${exit} — درست direction میں ${movePercent}% move۔ `;
+        if (result === "win") entrySection += "Entry timing اچھی تھی۔";
+      } else if (dir === "SELL" && exit < entry) {
+        entrySection += `Entry ${entry} سے Exit ${exit} — درست direction میں ${movePercent}% move۔ `;
+        if (result === "win") entrySection += "Entry timing اچھی تھی۔";
+      } else if (result === "loss") {
+        entrySection += `Market آپ کے خلاف گئی۔ اپنی entry criteria دوبارہ check کریں — کیا setup مکمل تھا؟`;
+      }
+      
+      if (lot > 0) {
+        if (lot >= 1.0) entrySection += ` Lot size ${lot} بڑی ہے — risk management check کریں۔`;
+        else if (lot <= 0.01) entrySection += ` Lot size ${lot} — conservative approach، ٹھیک ہے۔`;
+        else entrySection += ` Lot size ${lot} — مناسب۔`;
+      }
+      sections.push(entrySection);
     }
 
-    // Emotion analysis
+    // ── 3. PSYCHOLOGY ANALYSIS ──
+    let psychSection = "🧠 *Psychology:* ";
     if (emotion === "FOMO") {
-      analysis += "Your FOMO emotional state was a red flag — chasing trades rarely ends well. Next time if you feel FOMO, wait for the next setup instead. ";
+      psychSection += "FOMO کی حالت میں trade لی — یہ سب سے خطرناک emotion ہے۔ FOMO feel ہو تو chart بند کریں، 10 منٹ بعد دیکھیں۔ اگر setup ابھی بھی valid ہو تو enter کریں۔";
     } else if (emotion === "Revenge Trading") {
-      analysis += "Revenge trading is one of the biggest account killers. After a loss, take a break before entering another trade. ";
+      psychSection += "Revenge trading! نقصان کے بعد فوراً trade لینا account تباہ کرتا ہے۔ Rule بنائیں: loss کے بعد آج trading بند۔";
     } else if (emotion === "Calm & Focused") {
-      analysis += "Your calm emotional state contributed to good decision-making — this is the ideal trading mindset. ";
+      psychSection += "بہترین mental state — Calm اور Focused رہنا ہی professional trader کی پہچان ہے۔ اسی state کو maintain کریں۔";
     } else if (emotion === "Overconfident") {
-      analysis += "Overconfidence can lead to oversized positions and ignoring risk rules. Stay humble regardless of your recent performance. ";
+      psychSection += "Overconfidence سے بچیں — consecutive wins کے بعد یہ آتی ہے اور بڑا loss دیتی ہے۔ ہر trade کو نئی trade سمجھیں۔";
     } else if (emotion === "Anxious" || emotion === "Fearful") {
-      analysis += "Trading while anxious or fearful often leads to early exits or hesitation. Work on your pre-trade routine to center yourself. ";
+      psychSection += "Anxiety میں trade لی — اس state میں early exit اور stop loss move ہوتا ہے۔ Pre-trade routine بنائیں: deep breathing، plan لکھیں، پھر enter کریں۔";
     } else if (emotion === "Confident") {
-      analysis += "Confidence backed by analysis is good — just ensure it does not cross into overconfidence. ";
-    }
-
-    // Mistakes analysis
-    if (mistakes && mistakes.length > 3) {
-      analysis += `You noted a mistake: "${mistakes.substring(0, 80)}${mistakes.length > 80 ? '...' : ''}" — documenting this is the first step to fixing it. `;
-    } else if (result === "win") {
-      analysis += "No major mistakes noted — keep following your process consistently. ";
-    }
-
-    // Session insight
-    if (session === "Asian" && (pair.includes("JPY") || pair.includes("AUD") || pair.includes("NZD"))) {
-      analysis += "Asian session pairs like JPY crosses often move well during this time — good session choice for this pair.";
-    } else if (session === "London-NY Overlap") {
-      analysis += "The London-NY overlap has the highest volume and volatility — ideal for breakout strategies.";
-    } else if (session === "London") {
-      analysis += "London session typically provides strong directional moves — good timing.";
+      psychSection += "Confident state اچھی ہے — بس یقینی بنائیں کہ confidence analysis پر based ہو، feeling پر نہیں۔";
     } else {
-      analysis += `Keep tracking your performance in the ${session} session to find your most profitable time.`;
+      psychSection += "اپنی emotional state track کرتے رہیں — یہ performance کا سب سے بڑا factor ہے۔";
+    }
+    sections.push(psychSection);
+
+    // ── 4. MISTAKES & RISK ANALYSIS ──
+    if (mistakes && mistakes.trim().length > 2) {
+      let mistakeSection = "⚠️ *غلطی (Mistake):* ";
+      mistakeSection += `آپ نے لکھا: "${mistakes.substring(0, 100)}${mistakes.length > 100 ? '...' : ''}"`;
+      
+      const m = mistakes.toLowerCase();
+      if (m.includes("stop") || m.includes("sl")) {
+        mistakeSection += " — Stop loss move کرنا سب سے بڑی غلطی ہے۔ SL set کریں اور ہاتھ نہ لگائیں۔";
+      } else if (m.includes("early") || m.includes("جلدی")) {
+        mistakeSection += " — جلدی exit کرنا profit کاٹتا ہے۔ اپنا target hit ہونے دیں۔";
+      } else if (m.includes("late") || m.includes("دیر")) {
+        mistakeSection += " — دیر سے entry کرنا risk بڑھاتا ہے۔ اگلی بار چھوڑ دیں اگر entry miss ہو۔";
+      } else if (m.includes("liquidity") || m.includes("liq")) {
+        mistakeSection += " — Liquidity ignore کرنا common mistake ہے۔ ہمیشہ PDL/PDH کو mark کریں۔";
+      } else {
+        mistakeSection += " — اسے journal میں note کریں اور ہر trade سے پہلے یاد کریں۔";
+      }
+      sections.push(mistakeSection);
     }
 
-    return analysis;
+    // ── 5. SESSION ANALYSIS ──
+    let sessionSection = "⏰ *Session:* ";
+    if (session === "Asian") {
+      if (pair.includes("JPY") || pair.includes("AUD") || pair.includes("NZD") || pair.includes("SGD")) {
+        sessionSection += `Asian session میں ${pair} — بالکل درست choice۔ یہ pairs اس وقت سب سے زیادہ move کرتے ہیں۔`;
+      } else {
+        sessionSection += `Asian session میں ${pair} — یہ session EUR/GBP pairs کے لیے slow ہوتا ہے۔ JPY یا AUD pairs زیادہ موزوں ہیں۔`;
+      }
+    } else if (session === "London") {
+      sessionSection += "London session سب سے مضبوط directional moves دیتا ہے — اچھا وقت۔";
+    } else if (session === "New York") {
+      sessionSection += "New York session میں volatility زیادہ ہوتی ہے — news پر نظر رکھیں۔";
+    } else if (session === "London-NY Overlap") {
+      sessionSection += "London-NY Overlap سب سے زیادہ volume کا وقت ہے — breakout strategies کے لیے بہترین۔";
+    }
+    sections.push(sessionSection);
+
+    // ── 6. PATTERN DETECTION ──
+    if (allTrades && allTrades.length >= 3) {
+      let patternSection = "";
+      const recentTrades = allTrades.slice(-5); // last 5 trades
+      
+      // Check consecutive losses
+      const recentResults = recentTrades.map(t => t.result);
+      const lastThreeLoss = recentResults.slice(-3).every(r => r === "loss" || r === "be");
+      if (lastThreeLoss && result !== "win") {
+        patternSection = "🚨 *Pattern Warning:* آپ کی آخری 3+ trades loss/BE رہی ہیں۔ یہ losing streak ہے — آج trading بند کریں، اپنی strategy دوبارہ review کریں۔";
+      }
+
+      // Check FOMO pattern
+      const fomoCount = recentTrades.filter(t => t.emotion === "FOMO").length;
+      if (fomoCount >= 2) {
+        patternSection = "🚨 *Pattern Warning:* آپ بار بار FOMO میں trade لے رہے ہیں۔ یہ آپ کی سب سے بڑی weakness ہے — ہر trade سے پہلے لکھیں: "کیا یہ FOMO ہے؟"";
+      }
+
+      // Check revenge trading pattern  
+      const revengeCount = recentTrades.filter(t => t.emotion === "Revenge Trading").length;
+      if (revengeCount >= 1) {
+        patternSection = "🚨 *Pattern Warning:* Revenge trading کا pattern دیکھا گیا۔ Loss کے فوراً بعد trading سے گریز کریں — یہ rule آج سے لازم ہے۔";
+      }
+
+      // Same mistake repeated
+      if (mistakes && mistakes.trim().length > 2) {
+        const sameM = allTrades.filter(t => t.mistakes && 
+          t.mistakes.toLowerCase().includes(mistakes.toLowerCase().substring(0, 8))).length;
+        if (sameM >= 2) {
+          patternSection += (patternSection ? "
+" : "") + `🔁 *Repeated Mistake:* یہ غلطی آپ ${sameM} بار کر چکے ہیں۔ اسے اپنے trading rules میں لکھیں اور ہر trade سے پہلے پڑھیں۔`;
+        }
+      }
+
+      if (patternSection) sections.push(patternSection);
+    }
+
+    // ── 7. TIP OF THE TRADE ──
+    let tip = "💡 *آج کا سبق:* ";
+    if (result === "win" && emotion === "Calm & Focused") {
+      tip += "جب آپ calm ہوں اور plan follow کریں تو results آتے ہیں — یہی formula ہے۔";
+    } else if (result === "loss" && mistakes) {
+      tip += "Loss کا سب سے بڑا فائدہ یہ ہے کہ یہ سکھاتا ہے — بشرطیکہ آپ سیکھنے کو تیار ہوں۔";
+    } else if (result === "be") {
+      tip += "BE کو loss سمجھ کر اگلی بار بہتر exit plan بنائیں۔";
+    } else {
+      tip += "Consistency beats perfection — ہر trade سے سیکھتے رہیں۔";
+    }
+    sections.push(tip);
+
+    return sections.join("
+
+");
   }
 
   // ===== SUBMIT TRADE =====
@@ -285,7 +480,46 @@
     };
 
     // AI Analysis — Smart local analysis
-    tradeData.ai = generateAIAnalysis(tradeData);
+    // Gemini AI Analysis
+    try {
+      const prompt = `You are an expert forex trading coach. Analyze this trade and give detailed, specific feedback in English. Be direct, practical and motivating.
+
+Trade Details:
+- Pair: ${tradeData.pair} | Direction: ${tradeData.dir.toUpperCase()}
+- Entry: ${tradeData.entry} | Exit: ${tradeData.exit} | Lot: ${tradeData.lot}
+- P&L: $${tradeData.pnl} | Result: ${tradeData.result.toUpperCase()}
+- Session: ${tradeData.session} | Emotion: ${tradeData.emotion}
+- Account: ${tradeData.account || "Live Account"}
+- Trade Reason: ${tradeData.notes || "Not provided"}
+- Mistakes: ${tradeData.mistakes || "None mentioned"}
+
+Previous trades context (last 5):
+${allUserTrades.slice(-5).map(t => `- ${t.pair} ${t.result} $${t.pnl} emotion:${t.emotion}`).join("\n")}
+
+Give structured feedback with these sections:
+1. 📊 Result Analysis
+2. 🎯 Entry/Exit Analysis  
+3. 🧠 Psychology Assessment
+4. ⚠️ Mistake Analysis (if any)
+5. ⏰ Session Analysis
+6. 🚨 Pattern Warning (if you see repeated mistakes or losing streak)
+7. 💡 Key Lesson
+
+Keep each section 1-2 sentences. Be specific to their actual trade data.`;
+
+      const geminiRes = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBWocv-yIoB5tC063ilfN2fGd5dBCrHooA\`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 800, temperature: 0.7 }
+        })
+      });
+      const geminiData = await geminiRes.json();
+      tradeData.ai = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || generateAIAnalysis(tradeData, allUserTrades);
+    } catch(e) {
+      tradeData.ai = generateAIAnalysis(tradeData, allUserTrades);
+    }
 
     await addDoc(collection(db, "trades"), tradeData);
 
@@ -346,6 +580,7 @@
   }
 
   function renderTrades(trades) {
+    window._allTrades = allTrades; // expose for modal access
     const el = document.getElementById("trades-list");
     if (!trades.length) {
       el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>No trades yet.</div>`;
@@ -370,12 +605,37 @@
           <span>😶 ${t.emotion}</span>
         </div>
         ${t.notes ? `<div class="trade-notes">💬 ${t.notes}</div>` : ""}
-        ${t.screenshot ? `<div style="margin-top:8px"><a href="${t.screenshot}" target="_blank"><img src="${t.screenshot}" style="max-width:200px;border-radius:8px;border:1px solid rgba(255,255,255,0.1)" alt="Chart"></a></div>` : ""}
-        ${t.ai ? `<div class="trade-ai">🤖 ${t.ai}</div>` : ""}
+        ${t.screenshot ? `<div style="margin-top:8px;cursor:pointer" onclick="showImgModal('${t.id}')"><img src="${t.screenshot}" style="max-width:220px;max-height:140px;border-radius:8px;border:1px solid rgba(201,168,76,0.3);object-fit:cover" alt="Chart Screenshot"><div style="font-size:11px;color:var(--muted);margin-top:4px">🔍 Click to enlarge</div></div>` : ""}
+        ${t.ai ? `<div class="trade-ai" style="white-space:pre-wrap;line-height:1.8">🤖 ${t.ai}</div>` : ""}
+        <div style="margin-top:10px;display:flex;justify-content:flex-end">
+          <button onclick="openEditModal('${t.id}')" style="padding:5px 14px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font);transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✏️ Edit Trade</button>
+        </div>
       </div>`).join("");
   }
 
   // ===== ADMIN =====
+  // Save edited trade
+  window.saveEditTrade = async function() {
+    const id = document.getElementById("edit-trade-id").value;
+    if (!id) return;
+    try {
+      await updateDoc(doc(db, "trades", id), {
+        pair: document.getElementById("edit-pair").value.trim().toUpperCase(),
+        pnl: parseFloat(document.getElementById("edit-pnl").value) || 0,
+        result: document.getElementById("edit-result").value,
+        emotion: document.getElementById("edit-emotion").value,
+        notes: document.getElementById("edit-notes").value,
+        mistakes: document.getElementById("edit-mistakes").value,
+      });
+      document.getElementById("edit-modal").style.display = "none";
+      showToast("✅ Trade updated!");
+      await loadStats();
+      await loadTrades();
+    } catch(e) {
+      showToast("❌ Update failed. Try again.");
+    }
+  };
+
   async function loadAdminPanel() {
     if (!currentUserData || currentUserData.role !== "admin") return;
 
@@ -673,6 +933,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
   <div class="tabs" id="tabs">
     <div class="tab active" onclick="showTab('journal')" id="tab-journal">📊 My Journal</div>
     <div class="tab" onclick="showTab('trades')" id="tab-trades">📋 My Trades</div>
+    <div class="tab" onclick="showTab('summary')" id="tab-summary">📈 Account Summary</div>
     <div class="tab" onclick="showTab('admin')" id="tab-admin" style="display:none">⚙️ Admin Panel</div>
   </div>
 
@@ -722,7 +983,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
         <button class="btn-submit" id="submit-btn" onclick="submitTrade()">🤖 Submit & Get AI Analysis</button>
         <div class="ai-box" id="ai-box">
           <div class="ai-header"><div class="ai-dot"></div><span class="ai-label">AI Analysis</span></div>
-          <div class="ai-text" id="ai-text"></div>
+          <div class="ai-text" id="ai-text" style="white-space:pre-wrap;line-height:1.9"></div>
         </div>
       </div>
     </div>
@@ -745,6 +1006,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
       <div class="trades-list" id="trades-list"></div>
     </div>
 
+    <!-- ACCOUNT SUMMARY -->
+    <div class="section" id="sec-summary">
+      <div id="summary-content"><div class="empty"><div class="empty-icon">📈</div>Loading summary...</div></div>
+    </div>
+
     <!-- ADMIN -->
     <div class="section" id="sec-admin">
       <div class="admin-grid">
@@ -761,6 +1027,32 @@ nav{position:sticky;top:0;z-index:100;background:rgba(8,12,10,0.9);backdrop-filt
   </div>
 </div>
 
+<!-- Image Modal -->
+<div id="img-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;cursor:pointer" onclick="this.style.display='none'">
+  <img id="img-modal-src" style="max-width:95vw;max-height:95vh;border-radius:12px;border:1px solid rgba(201,168,76,0.3)" alt="Chart">
+  <div style="position:absolute;top:1rem;right:1rem;color:#fff;font-size:24px;cursor:pointer" onclick="document.getElementById('img-modal').style.display='none'">✕</div>
+</div>
+
+<!-- Edit Trade Modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;overflow-y:auto">
+  <div style="background:var(--bg2);border:1px solid var(--border-gold);border-radius:18px;padding:2rem;width:min(600px,95vw);margin:1rem auto;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <span style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--gold)">✏️ Edit Trade</span>
+      <span style="cursor:pointer;color:var(--muted);font-size:20px" onclick="document.getElementById('edit-modal').style.display='none'">✕</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">Pair</label><input id="edit-pair" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;margin-top:4px"></div>
+      <div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">P&L ($)</label><input id="edit-pnl" type="number" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;margin-top:4px"></div>
+      <div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">Result</label><select id="edit-result" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;margin-top:4px"><option value="win">Win ✅</option><option value="loss">Loss ❌</option><option value="be">Break Even ➖</option></select></div>
+      <div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">Emotion</label><select id="edit-emotion" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;margin-top:4px"><option>Calm & Focused</option><option>Confident</option><option>Anxious</option><option>FOMO</option><option>Revenge Trading</option><option>Overconfident</option><option>Fearful</option></select></div>
+      <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">Notes</label><textarea id="edit-notes" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;resize:vertical;min-height:70px;margin-top:4px"></textarea></div>
+      <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600">Mistakes</label><textarea id="edit-mistakes" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;resize:vertical;min-height:60px;margin-top:4px"></textarea></div>
+    </div>
+    <input type="hidden" id="edit-trade-id">
+    <button onclick="saveEditTrade()" style="width:100%;margin-top:1.25rem;padding:12px;background:var(--gold);border:none;border-radius:10px;color:#000;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer">Save Changes</button>
+  </div>
+</div>
+
 <script>
 function showError(id, msg) {
   const el = document.getElementById(id);
@@ -773,6 +1065,27 @@ function showToast(msg) {
   t.className = "toast"; t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
+}
+
+function showImgModal(tradeId) {
+  const trade = window._allTrades?.find(t => t.id === tradeId);
+  if (trade?.screenshot) {
+    document.getElementById("img-modal-src").src = trade.screenshot;
+    document.getElementById("img-modal").style.display = "flex";
+  }
+}
+
+function openEditModal(tradeId) {
+  const trade = window._allTrades?.find(t => t.id === tradeId);
+  if (!trade) return;
+  document.getElementById("edit-trade-id").value = tradeId;
+  document.getElementById("edit-pair").value = trade.pair || "";
+  document.getElementById("edit-pnl").value = trade.pnl || 0;
+  document.getElementById("edit-result").value = trade.result || "loss";
+  document.getElementById("edit-emotion").value = trade.emotion || "Calm & Focused";
+  document.getElementById("edit-notes").value = trade.notes || "";
+  document.getElementById("edit-mistakes").value = trade.mistakes || "";
+  document.getElementById("edit-modal").style.display = "flex";
 }
 </script>
 </body>
