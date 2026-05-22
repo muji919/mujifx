@@ -272,7 +272,7 @@
     document.getElementById("stat-best").textContent = "+$" + best;
   }
 
-  // ===== ADVANCED AI ANALYSIS ENGINE =====
+  // ===== AI ANALYSIS ENGINE (English) =====
   function generateAIAnalysis(t, allTrades) {
     const pair = t.pair || "";
     const dir = (t.dir || "").toUpperCase();
@@ -280,160 +280,144 @@
     const result = t.result || "loss";
     const emotion = t.emotion || "";
     const mistakes = t.mistakes || "";
-    const notes = t.notes || "";
     const session = t.session || "";
     const entry = parseFloat(t.entry) || 0;
-    const exit = parseFloat(t.exit) || 0;
+    const exit_price = parseFloat(t.exit) || 0;
     const lot = parseFloat(t.lot) || 0;
-
     let sections = [];
 
-    // ── 1. RESULT ANALYSIS ──
-    let resultSection = "📊 *نتیجہ (Result):* ";
+    // 1. RESULT
+    let r = "RESULT ANALYSIS\n";
     if (result === "win") {
-      if (pnl >= 100) resultSection += `${pair} پر $${pnl} کا زبردست منافع — بہترین execution۔ اس trade کو اپنا reference بنائیں۔`;
-      else resultSection += `${pair} پر $${pnl} منافع — اچھی trade۔ Process follow کرتے رہیں۔`;
+      r += pnl >= 100
+        ? "Excellent trade on " + pair + "! $" + pnl + " profit shows strong execution. Use this trade as your reference."
+        : "Good win on " + pair + " with $" + pnl + " profit. Keep following your process consistently.";
     } else if (result === "loss") {
-      resultSection += `${pair} پر $${Math.abs(pnl)} کا نقصان — یاد رہے، یہ trading کا حصہ ہے۔ لیکن اسے سمجھنا ضروری ہے۔`;
+      r += pair + " resulted in $" + Math.abs(pnl) + " loss. Every professional trader loses — what matters is understanding why it happened and moving forward.";
     } else {
-      resultSection += `${pair} پر Break Even — BE کو loss سمجھیں کیونکہ آپ نے وقت اور موقع لگایا۔ اگلی بار بہتر exit کریں۔`;
+      r += pair + " Break Even — treat BE as a loss because you invested time and missed opportunity. Plan a better exit next time.";
     }
-    sections.push(resultSection);
+    sections.push(r);
 
-    // ── 2. ENTRY/EXIT ANALYSIS ──
-    if (entry > 0 && exit > 0) {
-      let entrySection = "🎯 *Entry/Exit تجزیہ:* ";
-      const move = Math.abs(exit - entry);
-      const movePercent = ((move / entry) * 100).toFixed(3);
-      
-      if (dir === "BUY" && exit > entry) {
-        entrySection += `Entry ${entry} سے Exit ${exit} — درست direction میں ${movePercent}% move۔ `;
-        if (result === "win") entrySection += "Entry timing اچھی تھی۔";
-      } else if (dir === "SELL" && exit < entry) {
-        entrySection += `Entry ${entry} سے Exit ${exit} — درست direction میں ${movePercent}% move۔ `;
-        if (result === "win") entrySection += "Entry timing اچھی تھی۔";
-      } else if (result === "loss") {
-        entrySection += `Market آپ کے خلاف گئی۔ اپنی entry criteria دوبارہ check کریں — کیا setup مکمل تھا؟`;
+    // 2. ENTRY/EXIT
+    if (entry > 0 && exit_price > 0) {
+      let e = "ENTRY / EXIT ANALYSIS\n";
+      const movePercent = ((Math.abs(exit_price - entry) / entry) * 100).toFixed(3);
+      const correctDir = (dir === "BUY" && exit_price > entry) || (dir === "SELL" && exit_price < entry);
+      if (correctDir) {
+        e += "Entry " + entry + " to Exit " + exit_price + " — correct direction, " + movePercent + "% move. ";
+        e += result === "win" ? "Entry timing was solid!" : "Direction was right but trade management needs work.";
+      } else {
+        e += "Market moved against you (" + movePercent + "% opposite). Review your entry criteria — was the setup 100% complete?";
       }
-      
-      if (lot > 0) {
-        if (lot >= 1.0) entrySection += ` Lot size ${lot} بڑی ہے — risk management check کریں۔`;
-        else if (lot <= 0.01) entrySection += ` Lot size ${lot} — conservative approach، ٹھیک ہے۔`;
-        else entrySection += ` Lot size ${lot} — مناسب۔`;
-      }
-      sections.push(entrySection);
+      if (lot >= 1.0) e += " Lot size " + lot + " is large — keep risk per trade at 1-2% max.";
+      else if (lot > 0) e += " Lot size " + lot + " is appropriate.";
+      sections.push(e);
     }
 
-    // ── 3. PSYCHOLOGY ANALYSIS ──
-    let psychSection = "🧠 *Psychology:* ";
+    // 3. PSYCHOLOGY
+    let p = "PSYCHOLOGY ASSESSMENT\n";
     if (emotion === "FOMO") {
-      psychSection += "FOMO کی حالت میں trade لی — یہ سب سے خطرناک emotion ہے۔ FOMO feel ہو تو chart بند کریں، 10 منٹ بعد دیکھیں۔ اگر setup ابھی بھی valid ہو تو enter کریں۔";
+      p += "FOMO trade detected — this is the most dangerous emotion in trading! When you feel FOMO, close the chart for 10 minutes. If the setup is still valid after that, then enter.";
     } else if (emotion === "Revenge Trading") {
-      psychSection += "Revenge trading! نقصان کے بعد فوراً trade لینا account تباہ کرتا ہے۔ Rule بنائیں: loss کے بعد آج trading بند۔";
+      p += "Revenge trading! Taking trades immediately after a loss destroys accounts. New rule: after any loss, trading is done for the day. No exceptions.";
     } else if (emotion === "Calm & Focused") {
-      psychSection += "بہترین mental state — Calm اور Focused رہنا ہی professional trader کی پہچان ہے۔ اسی state کو maintain کریں۔";
+      p += "Best mental state possible! Calm and focused is the hallmark of a professional trader. Maintain this state — it is your real edge in the market.";
     } else if (emotion === "Overconfident") {
-      psychSection += "Overconfidence سے بچیں — consecutive wins کے بعد یہ آتی ہے اور بڑا loss دیتی ہے۔ ہر trade کو نئی trade سمجھیں۔";
+      p += "Watch out for overconfidence — it builds after consecutive wins and leads to the biggest losses. Treat every trade as a fresh, independent trade.";
     } else if (emotion === "Anxious" || emotion === "Fearful") {
-      psychSection += "Anxiety میں trade لی — اس state میں early exit اور stop loss move ہوتا ہے۔ Pre-trade routine بنائیں: deep breathing، plan لکھیں، پھر enter کریں۔";
+      p += "Trading while anxious leads to early exits and moving stop losses. Build a pre-trade routine: breathe, write your plan, then execute.";
     } else if (emotion === "Confident") {
-      psychSection += "Confident state اچھی ہے — بس یقینی بنائیں کہ confidence analysis پر based ہو، feeling پر نہیں۔";
+      p += "Confidence is good — just ensure it is based on analysis, not gut feeling or recent wins.";
     } else {
-      psychSection += "اپنی emotional state track کرتے رہیں — یہ performance کا سب سے بڑا factor ہے۔";
+      p += "Keep tracking your emotional state — it is the biggest factor in trading performance.";
     }
-    sections.push(psychSection);
+    sections.push(p);
 
-    // ── 4. MISTAKES & RISK ANALYSIS ──
+    // 4. MISTAKES
     if (mistakes && mistakes.trim().length > 2) {
-      let mistakeSection = "⚠️ *غلطی (Mistake):* ";
-      mistakeSection += `آپ نے لکھا: "${mistakes.substring(0, 100)}${mistakes.length > 100 ? '...' : ''}"`;
-      
-      const m = mistakes.toLowerCase();
-      if (m.includes("stop") || m.includes("sl")) {
-        mistakeSection += " — Stop loss move کرنا سب سے بڑی غلطی ہے۔ SL set کریں اور ہاتھ نہ لگائیں۔";
-      } else if (m.includes("early") || m.includes("جلدی")) {
-        mistakeSection += " — جلدی exit کرنا profit کاٹتا ہے۔ اپنا target hit ہونے دیں۔";
-      } else if (m.includes("late") || m.includes("دیر")) {
-        mistakeSection += " — دیر سے entry کرنا risk بڑھاتا ہے۔ اگلی بار چھوڑ دیں اگر entry miss ہو۔";
-      } else if (m.includes("liquidity") || m.includes("liq")) {
-        mistakeSection += " — Liquidity ignore کرنا common mistake ہے۔ ہمیشہ PDL/PDH کو mark کریں۔";
+      let m = "MISTAKE ANALYSIS\n";
+      m += 'You noted: "' + mistakes.substring(0, 100) + (mistakes.length > 100 ? "..." : "") + '"\n';
+      const ml = mistakes.toLowerCase();
+      if (ml.includes("stop") || ml.includes("sl")) {
+        m += "Moving your stop loss is the biggest sin in trading. Set it and leave it — no exceptions.";
+      } else if (ml.includes("early") || ml.includes("jaldi")) {
+        m += "Exiting early cuts your profits. Let your target get hit — trust your analysis.";
+      } else if (ml.includes("late") || ml.includes("der")) {
+        m += "Late entry increases risk. Next time, if you miss the entry, skip the trade — the market always provides another setup.";
+      } else if (ml.includes("liquidity") || ml.includes("liq") || ml.includes("pdl") || ml.includes("pdh")) {
+        m += "Ignoring liquidity is a common mistake. Always mark PDL/PDH before entering a trade.";
+      } else if (ml.includes("news")) {
+        m += "Avoid trading during high-impact news unless you are specifically a news trader.";
       } else {
-        mistakeSection += " — اسے journal میں note کریں اور ہر trade سے پہلے یاد کریں۔";
+        m += "Add this mistake to your trading rules and read it before every trade. Journaling is the solution.";
       }
-      sections.push(mistakeSection);
+      sections.push(m);
     }
 
-    // ── 5. SESSION ANALYSIS ──
-    let sessionSection = "⏰ *Session:* ";
+    // 5. SESSION
+    let s = "SESSION ANALYSIS\n";
+    const asianPairs = ["JPY","AUD","NZD","SGD","HKD"];
+    const isAsianPair = asianPairs.some(function(ap) { return pair.includes(ap); });
     if (session === "Asian") {
-      if (pair.includes("JPY") || pair.includes("AUD") || pair.includes("NZD") || pair.includes("SGD")) {
-        sessionSection += `Asian session میں ${pair} — بالکل درست choice۔ یہ pairs اس وقت سب سے زیادہ move کرتے ہیں۔`;
-      } else {
-        sessionSection += `Asian session میں ${pair} — یہ session EUR/GBP pairs کے لیے slow ہوتا ہے۔ JPY یا AUD pairs زیادہ موزوں ہیں۔`;
-      }
+      s += isAsianPair
+        ? "Trading " + pair + " in Asian session — perfect choice! These pairs move most actively during this time."
+        : "Trading " + pair + " in Asian session — this session is slow for EUR/GBP pairs. JPY or AUD pairs are more suitable.";
     } else if (session === "London") {
-      sessionSection += "London session سب سے مضبوط directional moves دیتا ہے — اچھا وقت۔";
+      s += "London session provides the strongest directional moves of the day. Good timing choice.";
     } else if (session === "New York") {
-      sessionSection += "New York session میں volatility زیادہ ہوتی ہے — news پر نظر رکھیں۔";
+      s += "New York session has high volatility. Always check the news calendar before entering.";
     } else if (session === "London-NY Overlap") {
-      sessionSection += "London-NY Overlap سب سے زیادہ volume کا وقت ہے — breakout strategies کے لیے بہترین۔";
+      s += "London-NY Overlap is the highest volume period of the day — best time for breakout strategies.";
+    } else {
+      s += "Keep tracking your session performance to identify which session suits your strategy best.";
     }
-    sections.push(sessionSection);
+    sections.push(s);
 
-    // ── 6. PATTERN DETECTION ──
+    // 6. PATTERN DETECTION
     if (allTrades && allTrades.length >= 3) {
-      let patternSection = "";
-      const recentTrades = allTrades.slice(-5); // last 5 trades
-      
-      // Check consecutive losses
-      const recentResults = recentTrades.map(t => t.result);
-      const lastThreeLoss = recentResults.slice(-3).every(r => r === "loss" || r === "be");
-      if (lastThreeLoss && result !== "win") {
-        patternSection = "🚨 *Pattern Warning:* آپ کی آخری 3+ trades loss/BE رہی ہیں۔ یہ losing streak ہے — آج trading بند کریں، اپنی strategy دوبارہ review کریں۔";
+      let warn = "";
+      const recent = allTrades.slice(-5);
+      const lastThreeBad = recent.slice(-3).every(function(t) { return t.result === "loss" || t.result === "be"; });
+      if (lastThreeBad && result !== "win") {
+        warn += "LOSING STREAK WARNING\nYour last 3+ trades have been loss/BE. This is a losing streak — stop trading today, review your strategy, and come back tomorrow with a fresh mindset.";
       }
-
-      // Check FOMO pattern
-      const fomoCount = recentTrades.filter(t => t.emotion === "FOMO").length;
+      const fomoCount = recent.filter(function(t) { return t.emotion === "FOMO"; }).length;
       if (fomoCount >= 2) {
-        patternSection = "🚨 *Pattern Warning:* آپ بار بار FOMO میں trade لے رہے ہیں۔ یہ آپ کی سب سے بڑی weakness ہے — ہر trade سے پہلے لکھیں: "کیا یہ FOMO ہے؟"";
+        warn += "FOMO PATTERN WARNING\nYou are repeatedly trading in FOMO — this is your biggest weakness. Before every trade, ask yourself: Is this FOMO?";
       }
-
-      // Check revenge trading pattern  
-      const revengeCount = recentTrades.filter(t => t.emotion === "Revenge Trading").length;
+      const revengeCount = recent.filter(function(t) { return t.emotion === "Revenge Trading"; }).length;
       if (revengeCount >= 1) {
-        patternSection = "🚨 *Pattern Warning:* Revenge trading کا pattern دیکھا گیا۔ Loss کے فوراً بعد trading سے گریز کریں — یہ rule آج سے لازم ہے۔";
+        warn += "REVENGE TRADING PATTERN\nRevenge trading pattern detected. Avoid trading immediately after a loss — this rule starts today.";
       }
-
-      // Same mistake repeated
       if (mistakes && mistakes.trim().length > 2) {
-        const sameM = allTrades.filter(t => t.mistakes && 
-          t.mistakes.toLowerCase().includes(mistakes.toLowerCase().substring(0, 8))).length;
-        if (sameM >= 2) {
-          patternSection += (patternSection ? "
-" : "") + `🔁 *Repeated Mistake:* یہ غلطی آپ ${sameM} بار کر چکے ہیں۔ اسے اپنے trading rules میں لکھیں اور ہر trade سے پہلے پڑھیں۔`;
+        const keyword = mistakes.toLowerCase().substring(0, 8);
+        const sameCount = allTrades.filter(function(t) { return t.mistakes && t.mistakes.toLowerCase().includes(keyword); }).length;
+        if (sameCount >= 2) {
+          warn += (warn ? "\n\n" : "") + "REPEATED MISTAKE\nYou have made this mistake " + sameCount + " times. Write it at the top of your trading rules and read it before every single trade.";
         }
       }
-
-      if (patternSection) sections.push(patternSection);
+      if (warn) sections.push(warn);
     }
 
-    // ── 7. TIP OF THE TRADE ──
-    let tip = "💡 *آج کا سبق:* ";
+    // 7. KEY LESSON
+    let tip = "KEY LESSON\n";
     if (result === "win" && emotion === "Calm & Focused") {
-      tip += "جب آپ calm ہوں اور plan follow کریں تو results آتے ہیں — یہی formula ہے۔";
+      tip += "When you are calm and follow your plan — results come. This is the formula. Just repeat it every day.";
     } else if (result === "loss" && mistakes) {
-      tip += "Loss کا سب سے بڑا فائدہ یہ ہے کہ یہ سکھاتا ہے — بشرطیکہ آپ سیکھنے کو تیار ہوں۔";
+      tip += "The biggest benefit of a loss is that it teaches you — but only if you are willing to learn. You journaled today, you will be better tomorrow.";
     } else if (result === "be") {
-      tip += "BE کو loss سمجھ کر اگلی بار بہتر exit plan بنائیں۔";
+      tip += "Treat BE as a loss and build a better exit plan for next time. Set your target and stick to it.";
+    } else if (result === "win") {
+      tip += "Win secured — now avoid overconfidence. Take the next trade with the same discipline. Consistency is the key.";
     } else {
-      tip += "Consistency beats perfection — ہر trade سے سیکھتے رہیں۔";
+      tip += "Consistency beats perfection — keep learning from every trade, keep improving. You got this.";
     }
     sections.push(tip);
 
-    return sections.join("
-
-");
+    return sections.join("\n\n---\n\n");
   }
+
 
   // ===== SUBMIT TRADE =====
   window.submitTrade = async function() {
@@ -507,7 +491,7 @@ Give structured feedback with these sections:
 
 Keep each section 1-2 sentences. Be specific to their actual trade data.`;
 
-      const geminiRes = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBWocv-yIoB5tC063ilfN2fGd5dBCrHooA\`, {
+      const geminiRes = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBzXJAds7vZcdTsNeU5QtGVV5pT3oTQ7v0\`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
